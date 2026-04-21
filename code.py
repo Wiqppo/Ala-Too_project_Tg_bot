@@ -6,6 +6,8 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 import asyncio
 from aiogram.utils.keyboard import ReplyKeyboardMarkup
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from pyexpat.errors import messages
 
@@ -17,15 +19,12 @@ dp = Dispatcher(storage=storage)
 router = Router()
 
 
-
 @router.message(Command('start'))
 async def cmd_start_2(message: Message):
     await message.answer(
-        ' Запуск сообщения по команде /start ,не знаете как пройти регестрацию введите комманду /start_2 '
+        ' Запуск сообщения по команде /start \nПройти регестрацию - введите комманду /start_2 \n'
 
-        ' главное меню /catalog '
-
-        ' хотите что то приобрести /catalog_1 '
+        ' Главное меню /catalog '
     )
 
 
@@ -52,27 +51,37 @@ async def show_device_types(message: Message):
     )
     await message.answer('Выберите категорию устройств:', reply_markup=device_keyboard)
 
-
+#  FOTKI
 @dp.message(F.text.lower() == 'photo')
 async def photo(message: Message):
-    photo = FSInputFile('2b220972-de53-4adf-b672-79f3f4b5c1b8.jpg')
-    await message.answer_photo(photo, '')
+    photo = FSInputFile('1726236300_new_preview_yaguar-koshki-priroda.jpg')
+    await message.answer_photo(photo)
 
-
-@dp.message(F.text.lower() == 'photo samsung')
+@dp.message(F.text.lower() == 'photo samsung s26 ultra')
 async def photo(message: Message):
-    photo = FSInputFile('')
-    await message.answer_photo(photo, '')
+    photo = FSInputFile('9127918617.jpg')
+    await message.answer_photo(photo)
 
+@dp.message(F.text.lower() == 'iphon 17 pro max')
+async def photo(message: Message):
+    photo = FSInputFile('i.webp')
+    await message.answer_photo(photo)
+
+@dp.message(F.text.lower() == 'xiaomi 17 ultra')
+async def photo(message: Message):
+    photo = FSInputFile('s-l1600.jpg')
+    await message.answer_photo(photo)
+
+# AUDIO
 @dp.message(F.text.lower() == 'audio')
 async def audio(message: Message):
     audio = FSInputFile('Ed_Sheeran_-_Shape_of_You_47828367.mp3')
-    await message.answer_audio(audio, '')
+    await message.answer_audio(audio)
 
 @dp.message(F.text.lower() == 'video')
 async def video(message: Message):
-    video = FSInputFile('WhatsApp_Video_2025-02-22_at_17.15.18_(1).mp4')
-    await message.answer_video(video, '')
+    video = FSInputFile('sssstik_q1uPTpDzfs_2026-04-22-00-55-57.mp4')
+    await message.answer_video(video)
 
 
 @dp.message(F.text.lower() == 'ios')
@@ -244,18 +253,57 @@ async def handle_callback_query(callback_query: types.callback_query):
         await callback_query.message.answer('Телефоны,ноутбуки и остальная техника ')
 
 
-@dp.message(Command('start_2'))
-async def hello(message: Message):
-    keyboard = [
-        [KeyboardButton(text='icloud'),
-         KeyboardButton(text='Google')]
-    ]
-    keyboard = types.ReplyKeyboardMarkup(
-        keyboard=keyboard,
-        resize_keyboard=True,
-        input_field_placeholder='Введите почту'
+# @dp.message(Command('start_2'))
+# async def hello(message: Message):
+#     keyboard = [
+#         [KeyboardButton(text='icloud'),
+#          KeyboardButton(text='Google')]
+#     ]
+#     keyboard = types.ReplyKeyboardMarkup(
+#         keyboard=keyboard,
+#         resize_keyboard=True,
+#         input_field_placeholder='Введите почту'
+#     )
+#     await message.answer("Как пройти регистрацию???", reply_markup=keyboard)
+class Reg(StatesGroup):
+    service = State()
+    email = State()
+
+# старт
+@dp.message(Command("start_2"))
+async def start(message: Message, state: FSMContext):
+    kb = types.ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text='iCloud'), KeyboardButton(text='Google')]],
+        resize_keyboard=True
     )
-    await message.answer("как пройти регистрацию???", reply_markup=keyboard)
+    await message.answer("Выбери сервис:", reply_markup=kb)
+    await state.set_state(Reg.service)
+
+# выбор сервиса
+@dp.message(Reg.service)
+async def service(message: Message, state: FSMContext):
+    if message.text not in ['iCloud', 'Google']:
+        await message.answer("Нажми кнопку 👇")
+        return
+
+    await state.update_data(service=message.text)
+    await message.answer("Введи email:")
+    await state.set_state(Reg.email)
+
+# ввод почты
+@dp.message(Reg.email)
+async def email(message: Message, state: FSMContext):
+    if '@' not in message.text:
+        await message.answer("Неправильный email, попробуй ещё")
+        return
+
+    data = await state.get_data()
+
+    await message.answer(
+        f"✅ Готово!\nСервис: {data['service']}\nEmail: {message.text}"
+    )
+
+    await state.clear()
 
 
 @dp.message(F.text.lower() == 'здравствуйте')
@@ -283,6 +331,12 @@ async def with_android(message: Message):
     await message.reply('Отличный выбор android лучше ios!')
 
 
+# @dp.message(F.text.lower() == 'Отправить музыку')
+# async def send_media(message: Message):
+#    text = message.text.lower()
+
+#   if text == 'отправить музыку':
+#        await message.reply_audio(audio=open(''))
 
 
 dp.include_router(router)
